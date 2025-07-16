@@ -1,8 +1,6 @@
 import { logger, task, wait } from "@trigger.dev/sdk/v3";
 
 import { openai } from "@/lib/openai";
-import prisma from "@/lib/prisma";
-import { createAnalysis } from "../services/analysis";
 
 export const analyzeAiTask = task({
   id: "analyze-pitchdeck",
@@ -10,8 +8,7 @@ export const analyzeAiTask = task({
   run: async (payload, { ctx }) => {
     logger.log("Start background task", { payload, ctx });
 
-    const { deckId, filePath, fileName, startupName, industry, summaryInput } =
-      payload;
+    const { deckId, filePath, fileName, startupName, industry, summaryInput } = payload;
 
     try {
       logger.log("📥 Fetching file for AI analysis");
@@ -72,26 +69,10 @@ Return only JSON:
 
       if (isNaN(overallScore)) throw new Error("Invalid score");
 
-      // Delete previous analysis (if exists)
-      await prisma.analysis.deleteMany({ where: { deckId } });
-
-      // Create analysis
-      await createAnalysis({ deckId, overallScore, response: parsed });
-
-      // Mark as completed
-      await prisma.deck.update({
-        where: { id: deckId },
-        data: { status: "COMPLETED" },
-      });
-
       logger.log("✅ Analysis saved, ini parsed", parsed);
       return parsed.summary;
     } catch (err) {
       logger.error("❌ Failed to analyze deck", err);
-      await prisma.deck.update({
-        where: { id: payload.deckId },
-        data: { status: "FAILED" },
-      });
     }
   },
 
